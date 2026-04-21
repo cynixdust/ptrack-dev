@@ -5,8 +5,8 @@ const isDev = !app.isPackaged;
 // Start the Express server
 if (!isDev) {
   // In production, we run the server from the bundled version
-  // This assumes server.js is bundled or the script handles it
-  require('../server.js');
+  // This assumes server.cjs is bundled
+  require('../server.cjs');
 }
 
 function createWindow() {
