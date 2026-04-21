@@ -66,7 +66,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    role TEXT CHECK(role IN ('Admin', 'Member')) DEFAULT 'Member',
+    role TEXT CHECK(role IN ('Admin', 'Creator', 'Member', 'Read-Only')) DEFAULT 'Member',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 

@@ -20,7 +20,7 @@ export interface Company {
 export interface User {
   id: string;
   username: string;
-  role: 'Admin' | 'Member';
+  role: 'Admin' | 'Creator' | 'Member' | 'Read-Only';
   created_at: string;
 }
 

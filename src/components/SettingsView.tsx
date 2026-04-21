@@ -9,8 +9,9 @@ export function SettingsView() {
   const [users, setUsers] = useState<UserType[]>([]);
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'Admin' | 'Member'>('Member');
+  const [newRole, setNewRole] = useState<'Admin' | 'Creator' | 'Member' | 'Read-Only'>('Member');
   const [loading, setLoading] = useState(true);
+  const [logoInput, setLogoInput] = useState('');
 
   useEffect(() => {
     loadAll();
@@ -21,17 +22,33 @@ export function SettingsView() {
       const [s, u] = await Promise.all([api.getSettings(), api.getUsers()]);
       setSettings(s);
       setUsers(u);
+      setLogoInput(s.app_logo || '');
       setLoading(false);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleUpdateLogo = async (url: string) => {
+  const handleUpdateLogo = async () => {
     if (!settings) return;
-    const updated = { ...settings, app_logo: url };
-    await api.updateSettings(updated);
-    setSettings(updated);
+    try {
+        const updated = { ...settings, app_logo: logoInput };
+        await api.updateSettings(updated);
+        setSettings(updated);
+        alert('Branding objective secured.');
+    } catch (err) {
+        alert('Protocol failure: Branding sync interrupted.');
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+      if (!settings) return;
+      if (confirm('Initiate branding purge? This will reset the app logo.')) {
+          const updated = { ...settings, app_logo: '' };
+          await api.updateSettings(updated);
+          setSettings(updated);
+          setLogoInput('');
+      }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,22 +118,28 @@ export function SettingsView() {
           <div className="space-y-4">
              <div className="space-y-3">
                 <label className="text-xs font-bold uppercase tracking-widest text-slate-500">App Logo</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-3">
                     <input 
                         type="text" 
-                        value={settings?.app_logo || ''} 
-                        onChange={(e) => handleUpdateLogo(e.target.value)}
-                        className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                        value={logoInput} 
+                        onChange={(e) => setLogoInput(e.target.value)}
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-red-500 text-xs"
                         placeholder="Image URL..."
                     />
-                    <div className="relative">
-                        <input 
-                            type="file" 
-                            accept="image/png, image/jpeg" 
-                            onChange={handleFileUpload}
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                        />
-                        <Button variant="outline" size="sm" className="h-full">Upload</Button>
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <input 
+                                type="file" 
+                                accept="image/png, image/jpeg" 
+                                onChange={handleFileUpload}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                            <Button variant="outline" size="sm" className="w-full h-full">Edit Image</Button>
+                        </div>
+                        <Button onClick={handleUpdateLogo} variant="primary" size="sm" className="flex-1">Save Branding</Button>
+                        <Button onClick={handleDeleteLogo} variant="danger" size="sm" className="px-3">
+                            <Trash2 size={16} />
+                        </Button>
                     </div>
                 </div>
              </div>
@@ -214,8 +237,10 @@ export function SettingsView() {
                         value={newRole} onChange={e => setNewRole(e.target.value as any)}
                         className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none"
                       >
-                          <option value="Member">Member</option>
                           <option value="Admin">Admin</option>
+                          <option value="Creator">Creator</option>
+                          <option value="Member">Member</option>
+                          <option value="Read-Only">Read-Only</option>
                       </select>
                       <Button type="submit" className="w-full">Create User</Button>
                   </form>
