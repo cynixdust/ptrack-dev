@@ -576,7 +576,7 @@ export default function App() {
                       try {
                           setAuthLoading(true);
                           // Find first available story_id
-                          const storyId = activeProject.epics?.[0]?.stories?.[0]?.id;
+                          const storyId = activeProject?.epics?.[0]?.stories?.[0]?.id;
                           if (!storyId) {
                                alert('Error: No target story found in database.');
                                return;
@@ -773,6 +773,18 @@ function KanbanBoard({
   onAddTask: () => void
 }) {
   const columns = ['To Do', 'In Progress', 'Review', 'Done'];
+
+  if (!project) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-12 text-center space-y-4">
+        <div className="h-24 w-24 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-300 animate-pulse">
+            <Sparkles size={48} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">Intelligence Loading...</h3>
+        <p className="text-slate-400 max-w-sm">Synchronizing strategic data and mission targets. This should only take a moment.</p>
+      </div>
+    );
+  }
 
   const allTasks: (Task & { storyName: string })[] = [];
   project.epics?.forEach((epic: any) => {
