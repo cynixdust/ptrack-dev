@@ -4,6 +4,7 @@ const isDev = !app.isPackaged;
 
 // Start the Express server
 if (!isDev) {
+  process.env.NODE_ENV = 'production';
   // In production, we run the server from the bundled version
   // This assumes server.cjs is bundled
   require('../server.cjs');
