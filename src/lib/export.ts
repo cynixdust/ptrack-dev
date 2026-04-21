@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Project, Task, ProjectStats } from '../types';
 
@@ -13,7 +13,7 @@ export const exportToPDF = (stats: ProjectStats, projects: Project[]) => {
   doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 32);
   
   // Stats Table
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: 40,
     head: [['Metric', 'Value']],
     body: [
@@ -24,16 +24,16 @@ export const exportToPDF = (stats: ProjectStats, projects: Project[]) => {
       ['Total Hours Logged', `${Math.round(stats.totalHours)}h`]
     ],
     theme: 'striped',
-    headStyles: { fillStyle: '#18181b' }
+    headStyles: { fillColor: '#18181b' }
   });
 
   // Projects Table
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: (doc as any).lastAutoTable.finalY + 10,
     head: [['Project Name', 'Created At', 'Description']],
     body: projects.map(p => [p.name, new Date(p.created_at).toLocaleDateString(), p.description || 'N/A']),
     theme: 'grid',
-    headStyles: { fillStyle: '#18181b' }
+    headStyles: { fillColor: '#18181b' }
   });
 
   doc.save('ScrumFlow-Report.pdf');

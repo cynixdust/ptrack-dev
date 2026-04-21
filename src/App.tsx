@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, Trash2, LayoutDashboard, Kanban, Settings as SettingsIcon, Clock, CheckCircle2, Plus, Search, Bell, ChevronRight, TrendingUp, BarChart3, Sparkles, Play, Pause, LogOut, Building, FolderLock, FileText } from 'lucide-react';
+import { Edit2, Trash2, LayoutDashboard, Kanban, Settings as SettingsIcon, Clock, CheckCircle2, Plus, Search, Bell, ChevronRight, TrendingUp, BarChart3, Sparkles, Play, Pause, LogOut, Building, FolderLock, FileText, Calendar } from 'lucide-react';
 import { Button, Card, Badge, cn } from './components/ui';
 import { format } from 'date-fns';
 import { 
@@ -200,6 +200,11 @@ export default function App() {
     }
   };
 
+  const isAdmin = user?.role === 'Admin';
+  const isCreator = isAdmin || user?.role === 'Creator';
+  const isMember = user?.role !== 'Read-Only';
+  const isReadOnly = user?.role === 'Read-Only';
+
   const loadProjects = async () => {
     if (!activeCompany) return;
     const data = await api.getProjectsByCompany(activeCompany.id);
@@ -327,15 +332,17 @@ export default function App() {
                         <h2 className="text-4xl font-bold tracking-tight mb-2 text-slate-900">Strategies</h2>
                         <p className="text-slate-500 font-medium">Manage initiatives for <span className="text-red-600 font-bold">{activeCompany?.name}</span></p>
                       </div>
-                      <Button className="rounded-xl shadow-lg shadow-red-200 font-bold px-8 ring-2 ring-red-50" onClick={() => {
-                          if (!activeCompany) {
-                              alert('Protocol Error: No Workspace Selected. Please select a company from the sidebar.');
-                              return;
-                          }
-                          setIsCreateModalOpen(true);
-                      }}>
-                        Create Strategy
-                      </Button>
+                      {isCreator && (
+                        <Button className="rounded-xl shadow-lg shadow-red-200 font-bold px-8 ring-2 ring-red-50" onClick={() => {
+                            if (!activeCompany) {
+                                alert('Protocol Error: No Workspace Selected. Please select a company from the sidebar.');
+                                return;
+                            }
+                            setIsCreateModalOpen(true);
+                        }}>
+                          Create Strategy
+                        </Button>
+                      )}
                     </div>
 
                     <Modal 
@@ -409,6 +416,8 @@ export default function App() {
                 <KanbanBoard 
                     project={activeProject} 
                     user={user} 
+                    searchQuery={searchQuery}
+                    canEdit={isMember}
                     onUpdate={() => loadProjectDetails()} 
                     onSelectTask={(task) => setSelectedTask(task)} 
                     onEditTask={(task) => {
@@ -443,7 +452,7 @@ export default function App() {
                     </div>
                   </div>
                )}
-             {activeTab === 'settings' && <SettingsView key="settings" />}
+             {activeTab === 'settings' && <SettingsView user={user} />}
           </AnimatePresence>
         </div>
       </main>
@@ -758,6 +767,8 @@ function StatCard({ title, value, growth, icon }: { title: string, value: string
 function KanbanBoard({ 
   project, 
   user, 
+  searchQuery,
+  canEdit,
   onUpdate, 
   onSelectTask,
   onEditTask,
@@ -766,6 +777,8 @@ function KanbanBoard({
 }: { 
   project: any, 
   user: User | null, 
+  searchQuery: string,
+  canEdit: boolean,
   onUpdate: () => void, 
   onSelectTask: (task: any) => void,
   onEditTask: (task: any) => void,
@@ -773,6 +786,8 @@ function KanbanBoard({
   onAddTask: () => void
 }) {
   const columns = ['To Do', 'In Progress', 'Review', 'Done'];
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [priorityFilter, setPriorityFilter] = useState<string>('All');
 
   if (!project) {
     return (
@@ -786,11 +801,20 @@ function KanbanBoard({
     );
   }
 
-  const allTasks: (Task & { storyName: string })[] = [];
+  const allTasks: (Task & { storyName: string, epicName: string })[] = [];
   project.epics?.forEach((epic: any) => {
     epic.stories?.forEach((story: any) => {
       story.tasks?.forEach((task: any) => {
-        allTasks.push({ ...task, storyName: story.name });
+        const matchesSearch = !searchQuery || 
+          task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          story.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          epic.name.toLowerCase().includes(searchQuery.toLowerCase());
+          
+        const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
+
+        if (matchesSearch && matchesPriority) {
+          allTasks.push({ ...task, storyName: story.name, epicName: epic.name });
+        }
       });
     });
   });
@@ -803,6 +827,8 @@ function KanbanBoard({
         console.error('Update status failed:', err);
       }
   };
+
+  const filteredColumns = statusFilter === 'All' ? columns : [statusFilter];
 
   return (
     <motion.div 
@@ -820,11 +846,37 @@ function KanbanBoard({
                   <p className="text-red-100/80 font-medium">Active Strategic Initiative</p>
               </div>
           </div>
+          
+          <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-100/60 mb-1">Status View</span>
+                  <select 
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold rounded-xl px-4 py-2 focus:ring-2 focus:ring-white/40 outline-none transition-all cursor-pointer"
+                  >
+                      <option value="All" className="text-slate-900 italic">Full Lifecycle</option>
+                      {columns.map(c => <option key={c} value={c} className="text-slate-900 font-bold">{c}</option>)}
+                  </select>
+              </div>
+
+              <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-100/60 mb-1">Impact Level</span>
+                  <select 
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                    className="bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold rounded-xl px-4 py-2 focus:ring-2 focus:ring-white/40 outline-none transition-all cursor-pointer"
+                  >
+                      <option value="All" className="text-slate-900 italic">Any Priority</option>
+                      {['Low', 'Medium', 'High', 'Critical'].map(p => <option key={p} value={p} className="text-slate-900 font-bold">{p}</option>)}
+                  </select>
+              </div>
+          </div>
        </div>
 
        <div className="flex-1 overflow-x-auto pb-4 custom-scrollbar">
           <div className="flex gap-6 h-full min-w-max">
-            {columns.map(col => (
+            {filteredColumns.map(col => (
                <div key={col} className="w-80 flex flex-col gap-4">
                   <div className="flex items-center justify-between px-2">
                      <div className="flex items-center gap-2">
@@ -844,61 +896,109 @@ function KanbanBoard({
                             onClick={() => onSelectTask(task)}
                         >
                             <Card className="p-5 border-slate-200 shadow-sm hover:border-red-400 hover:shadow-xl hover:shadow-red-100/30 hover:-translate-y-1 transition-all cursor-pointer bg-white group/card relative overflow-hidden">
-                               <div className="absolute top-0 right-0 p-3 flex gap-1 z-10 translate-y-[-100%] group-hover:translate-y-0 transition-transform duration-300">
-                                   <button 
-                                     onClick={(e) => { 
-                                         e.stopPropagation(); 
-                                         onEditTask(task); 
-                                     }} 
-                                     className="p-1.5 bg-white/95 backdrop-blur-sm text-slate-400 hover:text-red-600 rounded-lg transition-all border border-slate-100 shadow-lg hover:scale-110"
-                                   >
-                                       <Edit2 size={12} />
-                                   </button>
-                                   <button 
-                                     onClick={(e) => { 
-                                         e.stopPropagation(); 
-                                         onDeleteTask(task.id); 
-                                     }} 
-                                     className="p-1.5 bg-white/95 backdrop-blur-sm text-slate-400 hover:text-red-600 rounded-lg transition-all border border-slate-100 shadow-lg hover:scale-110"
-                                   >
-                                       <Trash2 size={12} />
-                                   </button>
-                               </div>
-
-                               <div className="flex justify-between items-start mb-4 pr-12">
-                                 <span className="text-[10px] font-black text-slate-400 font-mono tracking-tighter uppercase">#{task.id.split('-')[0]}</span>
-                                 <Badge variant={task.priority === 'Critical' ? 'error' : 'warning'} className="h-5 text-[9px] font-black tracking-widest border-none shadow-sm">
-                                   {task.priority.toUpperCase()}
-                                 </Badge>
-                               </div>
-
-                               <h5 className="font-bold text-slate-800 text-sm mb-4 leading-snug tracking-tight group-hover:text-red-600 transition-colors">{task.name}</h5>
-                               
-                               <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                                 <div className="flex items-center gap-1.5 text-red-600/70 font-mono text-[10px]">
-                                   <Clock size={12} strokeWidth={3} className="text-red-500" />
-                                   <strong className="text-slate-900">{task.actual_time.toFixed(1)}h</strong>
-                                   <span className="text-slate-300">/</span>
-                                   <span className="text-slate-500 font-medium">{task.estimated_time || 0}h</span>
+                               <div className="flex justify-between items-center mb-3 pr-1">
+                                 <div className="flex items-center gap-2">
+                                     <span className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 uppercase">#{task.id.split('-')[0]}</span>
+                                     <Badge variant={task.priority === 'Critical' ? 'error' : task.priority === 'High' ? 'warning' : 'default'} className="h-4 text-[9px] font-black tracking-widest border-none shadow-sm">
+                                       {task.priority.toUpperCase()}
+                                     </Badge>
                                  </div>
-                                 <select 
-                                    value={task.status} 
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={e => changeStatus(task.id, e.target.value)}
-                                    className="text-[10px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none font-bold text-slate-600 focus:ring-1 focus:ring-red-500 transition-all cursor-pointer"
-                                 >
-                                     {columns.map(c => <option key={c} value={c}>{c}</option>)}
-                                 </select>
+                                 
+                                 {canEdit && (
+                                     <div className="flex gap-1">
+                                         <button 
+                                           onClick={(e) => { 
+                                               e.stopPropagation(); 
+                                               onEditTask(task); 
+                                           }} 
+                                           title="Edit Task"
+                                           className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                         >
+                                             <Edit2 size={12} />
+                                         </button>
+                                         <button 
+                                           onClick={(e) => { 
+                                               e.stopPropagation(); 
+                                               onDeleteTask(task.id); 
+                                           }} 
+                                           title="Delete Task"
+                                           className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                         >
+                                             <Trash2 size={12} />
+                                         </button>
+                                     </div>
+                                 )}
+                               </div>
+
+                               <div className="mb-4">
+                                   <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 overflow-hidden text-ellipsis whitespace-nowrap">
+                                       <Building size={10} className="shrink-0" />
+                                       <span className="hover:text-red-500 transition-colors">{task.epicName}</span>
+                                       <ChevronRight size={8} className="shrink-0 opacity-50" />
+                                       <span className="text-red-500/70">{task.storyName}</span>
+                                   </div>
+                                   <h5 className="font-bold text-slate-800 text-[13px] leading-tight tracking-tight group-hover:text-red-600 transition-colors line-clamp-2">{task.name}</h5>
+                               </div>
+
+                               <div className="space-y-4">
+                                   {/* Progress Bar */}
+                                   <div className="space-y-1.5">
+                                       <div className="flex justify-between items-center text-[10px] font-bold">
+                                           <span className="text-slate-400 uppercase tracking-wider">Velocity</span>
+                                           <span className="text-slate-600">{Math.round((task.actual_time / (task.estimated_time || 1)) * 100)}%</span>
+                                       </div>
+                                       <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                                           <motion.div 
+                                               initial={{ width: 0 }}
+                                               animate={{ width: `${Math.min((task.actual_time / (task.estimated_time || 1)) * 100, 100)}%` }}
+                                               className={cn(
+                                                   "h-full rounded-full transition-colors",
+                                                   (task.actual_time / (task.estimated_time || 1)) > 1 ? "bg-amber-500" : "bg-red-500"
+                                               )}
+                                           />
+                                       </div>
+                                   </div>
+
+                                   <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                     <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-1.5 text-slate-400 font-mono text-[10px]">
+                                            <Clock size={11} className="text-red-500" />
+                                            <strong className="text-slate-900">{task.actual_time.toFixed(1)}h</strong>
+                                            <span className="opacity-30">/</span>
+                                            <span className="font-medium">{task.estimated_time || 0}h</span>
+                                        </div>
+                                        {task.due_date && (
+                                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase">
+                                                <Calendar size={10} className="text-red-400" />
+                                                <span>Due {format(new Date(task.due_date), 'MMM d')}</span>
+                                            </div>
+                                        )}
+                                     </div>
+                                     <select 
+                                        value={task.status} 
+                                        disabled={!canEdit}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={e => changeStatus(task.id, e.target.value)}
+                                        className={cn(
+                                            "text-[10px] border border-slate-200 rounded-lg px-2 py-1 outline-none font-bold text-slate-600 focus:ring-1 focus:ring-red-500 transition-all",
+                                            canEdit ? "bg-slate-50 cursor-pointer hover:bg-white" : "bg-slate-100 cursor-not-allowed opacity-60"
+                                        )}
+                                     >
+                                         {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                                     </select>
+                                   </div>
                                </div>
                             </Card>
                         </div>
                       ))}
-                      <button 
-                        onClick={onAddTask}
-                        className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:border-red-400 hover:text-red-500 hover:bg-white transition-all"
-                      >
-                         + Add Intent
-                      </button>
+                      {canEdit && (
+                        <button 
+                          onClick={onAddTask}
+                          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:border-red-400 hover:text-red-500 hover:bg-white transition-all"
+                        >
+                           + Add Intent
+                        </button>
+                      )}
                   </div>
                </div>
             ))}

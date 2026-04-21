@@ -4,7 +4,7 @@ import { Button, Card, Badge } from './ui';
 import { User, Database, Building, Trash2, Plus, ArrowRight, Settings } from 'lucide-react';
 import { AppSettings, User as UserType } from '../types';
 
-export function SettingsView() {
+export function SettingsView({ user: currentUser }: { user: UserType | null }) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [users, setUsers] = useState<UserType[]>([]);
   const [newUsername, setNewUsername] = useState('');
@@ -13,13 +13,19 @@ export function SettingsView() {
   const [loading, setLoading] = useState(true);
   const [logoInput, setLogoInput] = useState('');
 
+  const isAdmin = currentUser?.role === 'Admin';
+  const isCreator = isAdmin || currentUser?.role === 'Creator';
+
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [currentUser]);
 
   const loadAll = async () => {
     try {
-      const [s, u] = await Promise.all([api.getSettings(), api.getUsers()]);
+      const [s, u] = await Promise.all([
+          api.getSettings(), 
+          isAdmin ? api.getUsers() : Promise.resolve([])
+      ]);
       setSettings(s);
       setUsers(u);
       setLogoInput(s.app_logo || '');
@@ -29,13 +35,15 @@ export function SettingsView() {
     }
   };
 
-  const handleUpdateLogo = async () => {
+  const handleUpdateLogo = async (url?: string) => {
     if (!settings) return;
+    const newLogo = typeof url === 'string' ? url : logoInput;
     try {
-        const updated = { ...settings, app_logo: logoInput };
+        const updated = { ...settings, app_logo: newLogo };
         await api.updateSettings(updated);
         setSettings(updated);
-        alert('Branding objective secured.');
+        setLogoInput(newLogo);
+        if (typeof url !== 'string') alert('Branding objective secured.');
     } catch (err) {
         alert('Protocol failure: Branding sync interrupted.');
     }
@@ -110,164 +118,188 @@ export function SettingsView() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Branding */}
-        <Card className="p-8 border-slate-200 bg-white">
-          <div className="flex items-center gap-3 mb-6">
-            <Building className="text-red-600" size={20} />
-            <h3 className="font-bold text-slate-900">App Branding</h3>
-          </div>
-          <div className="space-y-4">
-             <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-500">App Logo</label>
-                <div className="flex flex-col gap-3">
-                    <input 
-                        type="text" 
-                        value={logoInput} 
-                        onChange={(e) => setLogoInput(e.target.value)}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-red-500 text-xs"
-                        placeholder="Image URL..."
-                    />
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <input 
-                                type="file" 
-                                accept="image/png, image/jpeg" 
-                                onChange={handleFileUpload}
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                            />
-                            <Button variant="outline" size="sm" className="w-full h-full">Edit Image</Button>
-                        </div>
-                        <Button onClick={handleUpdateLogo} variant="primary" size="sm" className="flex-1">Save Branding</Button>
-                        <Button onClick={handleDeleteLogo} variant="danger" size="sm" className="px-3">
-                            <Trash2 size={16} />
-                        </Button>
-                    </div>
-                </div>
-             </div>
-             {settings?.app_logo && (
-                 <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex justify-center">
-                     <img src={settings.app_logo} alt="App Logo" className="h-12 object-contain" referrerPolicy="no-referrer" />
-                 </div>
-             )}
-          </div>
-        </Card>
+        {isCreator ? (
+          <Card className="p-8 border-slate-200 bg-white">
+            <div className="flex items-center gap-3 mb-6">
+              <Building className="text-red-600" size={20} />
+              <h3 className="font-bold text-slate-900">App Branding</h3>
+            </div>
+            <div className="space-y-4">
+               <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500">App Logo</label>
+                  <div className="flex flex-col gap-3">
+                      <input 
+                          type="text" 
+                          value={logoInput} 
+                          onChange={(e) => setLogoInput(e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                          placeholder="Image URL..."
+                      />
+                      <div className="flex gap-2">
+                          <div className="relative flex-1">
+                              <input 
+                                  type="file" 
+                                  accept="image/png, image/jpeg" 
+                                  onChange={handleFileUpload}
+                                  className="absolute inset-0 opacity-0 cursor-pointer"
+                              />
+                              <Button variant="outline" size="sm" className="w-full h-full">Edit Image</Button>
+                          </div>
+                          <Button onClick={() => handleUpdateLogo()} variant="primary" size="sm" className="flex-1">Save Branding</Button>
+                          <Button onClick={handleDeleteLogo} variant="danger" size="sm" className="px-3">
+                              <Trash2 size={16} />
+                          </Button>
+                      </div>
+                  </div>
+               </div>
+               {settings?.app_logo && (
+                   <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex justify-center">
+                       <img src={settings.app_logo} alt="App Logo" className="h-12 object-contain" referrerPolicy="no-referrer" />
+                   </div>
+               )}
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-8 border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-center">
+              <Building className="text-slate-300 mb-4" size={48} />
+              <h3 className="font-bold text-slate-900 mb-1">Branding Locked</h3>
+              <p className="text-xs text-slate-400 max-w-[200px]">Strategic branding is managed by system creators.</p>
+          </Card>
+        )}
 
         {/* Database Configuration */}
-        <Card className="p-8 border-slate-200 bg-white">
-          <div className="flex items-center gap-3 mb-6">
-            <Database className="text-red-600" size={20} />
-            <h3 className="font-bold text-slate-900">Database Engine</h3>
-          </div>
-          <div className="space-y-4">
-             <div className="flex gap-2">
-                {['sqlite', 'postgres', 'mongodb'].map((db) => (
-                    <Button 
-                        key={db}
-                        variant={settings?.db_type === db ? 'primary' : 'outline'}
-                        size="sm"
-                        className="flex-1 capitalize"
-                        onClick={() => handleUpdateDB(db)}
-                    >
-                        {db}
-                    </Button>
-                ))}
-             </div>
-             <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Advanced Config</label>
-                <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400">HOST</span>
-                        <input type="text" className="w-full px-2 py-1 bg-slate-100 border-none rounded text-xs" placeholder="localhost" readOnly={settings?.db_type === 'sqlite'} />
-                    </div>
-                    <div className="space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400">PORT</span>
-                        <input type="text" className="w-full px-2 py-1 bg-slate-100 border-none rounded text-xs" placeholder={settings?.db_type === 'postgres' ? '5432' : '27017'} readOnly={settings?.db_type === 'sqlite'} />
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <span className="text-[9px] font-bold text-slate-400">CONNECTION STRING</span>
-                    <input 
-                        type="text" 
-                        value={settings?.db_type === 'postgres' ? (settings.pg_url || '') : settings?.db_type === 'mongodb' ? (settings.mongo_url || '') : 'scrumflow.db'}
-                        onChange={(e) => {
-                            if (!settings) return;
-                            const field = settings.db_type === 'postgres' ? 'pg_url' : 'mongo_url';
-                            const updated = { ...settings, [field]: e.target.value };
-                            setSettings(updated);
-                            api.updateSettings({ [field]: e.target.value });
-                        }}
-                        readOnly={settings?.db_type === 'sqlite'}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-xs"
-                        placeholder="mongodb+srv://..."
-                    />
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                    <input type="checkbox" className="rounded" />
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">Enable SSL Connection</span>
-                </div>
-             </div>
-          </div>
-        </Card>
+        {isAdmin ? (
+          <Card className="p-8 border-slate-200 bg-white">
+            <div className="flex items-center gap-3 mb-6">
+              <Database className="text-red-600" size={20} />
+              <h3 className="font-bold text-slate-900">Database Engine</h3>
+            </div>
+            <div className="space-y-4">
+               <div className="flex gap-2">
+                  {['sqlite', 'postgres', 'mongodb'].map((db) => (
+                      <Button 
+                          key={db}
+                          variant={settings?.db_type === db ? 'primary' : 'outline'}
+                          size="sm"
+                          className="flex-1 capitalize"
+                          onClick={() => handleUpdateDB(db)}
+                      >
+                          {db}
+                      </Button>
+                  ))}
+               </div>
+               <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Advanced Config</label>
+                  <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                          <span className="text-[9px] font-bold text-slate-400">HOST</span>
+                          <input type="text" className="w-full px-2 py-1 bg-slate-100 border-none rounded text-xs" placeholder="localhost" readOnly={settings?.db_type === 'sqlite'} />
+                      </div>
+                      <div className="space-y-1">
+                          <span className="text-[9px] font-bold text-slate-400">PORT</span>
+                          <input type="text" className="w-full px-2 py-1 bg-slate-100 border-none rounded text-xs" placeholder={settings?.db_type === 'postgres' ? '5432' : '27017'} readOnly={settings?.db_type === 'sqlite'} />
+                      </div>
+                  </div>
+                  <div className="space-y-1">
+                      <span className="text-[9px] font-bold text-slate-400">CONNECTION STRING</span>
+                      <input 
+                          type="text" 
+                          value={settings?.db_type === 'postgres' ? (settings.pg_url || '') : settings?.db_type === 'mongodb' ? (settings.mongo_url || '') : 'scrumflow.db'}
+                          onChange={(e) => {
+                              if (!settings) return;
+                              const field = settings.db_type === 'postgres' ? 'pg_url' : 'mongo_url';
+                              const updated = { ...settings, [field]: e.target.value };
+                              setSettings(updated);
+                              api.updateSettings({ [field]: e.target.value });
+                          }}
+                          readOnly={settings?.db_type === 'sqlite'}
+                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-xs"
+                          placeholder="mongodb+srv://..."
+                      />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                      <input type="checkbox" className="rounded" />
+                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">Enable SSL Connection</span>
+                  </div>
+               </div>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-8 border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-center">
+              <Database className="text-slate-300 mb-4" size={48} />
+              <h3 className="font-bold text-slate-900 mb-1">Architecture Locked</h3>
+              <p className="text-xs text-slate-400 max-w-[200px]">Core infrastructure is restricted to systems administrators.</p>
+          </Card>
+        )}
       </div>
 
       {/* User Management */}
-      <Card className="p-8 border-slate-200 bg-white">
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3">
-                <User className="text-red-600" size={20} />
-                <h3 className="font-bold text-slate-900">User Management</h3>
+      {isAdmin ? (
+        <Card className="p-8 border-slate-200 bg-white">
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-3">
+                  <User className="text-red-600" size={20} />
+                  <h3 className="font-bold text-slate-900">User Management</h3>
+              </div>
+              <Badge variant="success">{users.length} Active Users</Badge>
             </div>
-            <Badge variant="success">{users.length} Active Users</Badge>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-1 border-r border-slate-100 pr-8">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Add New User</h4>
-                  <form onSubmit={handleAddUser} className="space-y-4">
-                      <input 
-                          type="text" placeholder="Username" required
-                          value={newUsername} onChange={e => setNewUsername(e.target.value)}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-1 border-r border-slate-100 pr-8">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Add New User</h4>
+                    <form onSubmit={handleAddUser} className="space-y-4">
+                        <input 
+                            type="text" placeholder="Username" required
+                            value={newUsername} onChange={e => setNewUsername(e.target.value)}
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none"
+                        />
+                        <input 
+                            type="password" placeholder="Password" required
+                            value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none"
+                        />
+                        <select 
+                          value={newRole} onChange={e => setNewRole(e.target.value as any)}
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none"
-                      />
-                      <input 
-                          type="password" placeholder="Password" required
-                          value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none"
-                      />
-                      <select 
-                        value={newRole} onChange={e => setNewRole(e.target.value as any)}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none"
-                      >
-                          <option value="Admin">Admin</option>
-                          <option value="Creator">Creator</option>
-                          <option value="Member">Member</option>
-                          <option value="Read-Only">Read-Only</option>
-                      </select>
-                      <Button type="submit" className="w-full">Create User</Button>
-                  </form>
-              </div>
+                        >
+                            <option value="Admin">Admin</option>
+                            <option value="Creator">Creator</option>
+                            <option value="Member">Member</option>
+                            <option value="Read-Only">Read-Only</option>
+                        </select>
+                        <Button type="submit" className="w-full">Create User</Button>
+                    </form>
+                </div>
 
-              <div className="lg:col-span-2">
-                  <div className="space-y-3">
-                      {users.map(u => (
-                          <div key={u.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                              <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 bg-white border border-slate-100 rounded-lg flex items-center justify-center font-bold text-slate-400 capitalize">
-                                      {u.username[0]}
-                                  </div>
-                                  <div>
-                                      <div className="font-bold text-slate-900">{u.username}</div>
-                                      <div className="text-[10px] text-red-600 font-black uppercase tracking-widest">{u.role}</div>
-                                  </div>
-                              </div>
-                              <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-500" onClick={() => handleDeleteUser(u.id)}>
-                                  <Trash2 size={16} />
-                              </Button>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-          </div>
-      </Card>
+                <div className="lg:col-span-2">
+                    <div className="space-y-3">
+                        {users.map(u => (
+                            <div key={u.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 bg-white border border-slate-100 rounded-lg flex items-center justify-center font-bold text-slate-400 capitalize">
+                                        {u.username[0]}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-900">{u.username}</div>
+                                        <div className="text-[10px] text-red-600 font-black uppercase tracking-widest">{u.role}</div>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-500" onClick={() => handleDeleteUser(u.id)}>
+                                    <Trash2 size={16} />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </Card>
+      ) : (
+        <Card className="p-8 border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-center min-h-[300px]">
+            <User className="text-slate-300 mb-4" size={64} />
+            <h3 className="font-bold text-slate-900 mb-1">Personnel Records Restricted</h3>
+            <p className="text-sm text-slate-400 max-w-sm">Access to user identities and system roles is reserved for administrative protocols.</p>
+        </Card>
+      )}
     </div>
   );
 }
