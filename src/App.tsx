@@ -120,6 +120,8 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [selectedEpicId, setSelectedEpicId] = useState<string>('');
+  const [selectedStoryId, setSelectedStoryId] = useState<string>('');
   const [newStrategyName, setNewStrategyName] = useState('');
   const [newStrategyDesc, setNewStrategyDesc] = useState('');
   const [editingTaskName, setEditingTaskName] = useState('');
@@ -425,7 +427,13 @@ export default function App() {
                         setEditingTaskName(task.name);
                     }}
                     onDeleteTask={(id) => setDeletingTaskId(id)}
-                    onAddTask={() => setIsAddTaskModalOpen(true)}
+                    onAddTask={() => {
+                        const firstEpic = activeProject?.epics?.[0];
+                        const firstStory = firstEpic?.stories?.[0];
+                        setSelectedEpicId(firstEpic?.id || '');
+                        setSelectedStoryId(firstStory?.id || '');
+                        setIsAddTaskModalOpen(true);
+                    }}
                 />
              )}
              {activeTab === 'reports' && (
@@ -581,17 +589,14 @@ export default function App() {
               <>
                   <Button variant="outline" onClick={() => setIsAddTaskModalOpen(false)}>Discard</Button>
                   <Button onClick={async () => {
-                      if (!newTaskName || !activeProject) return;
+                      if (!newTaskName || !selectedStoryId) {
+                          alert('Protocol Error: Please define an intent and select a target story.');
+                          return;
+                      }
                       try {
                           setAuthLoading(true);
-                          // Find first available story_id
-                          const storyId = activeProject?.epics?.[0]?.stories?.[0]?.id;
-                          if (!storyId) {
-                               alert('Error: No target story found in database.');
-                               return;
-                          }
                           await api.createTask({
-                              story_id: storyId,
+                              story_id: selectedStoryId,
                               name: newTaskName,
                               priority: newTaskPriority,
                               status: 'To Do'
@@ -599,6 +604,8 @@ export default function App() {
                           await loadProjectDetails();
                           setIsAddTaskModalOpen(false);
                           setNewTaskName('');
+                          setSelectedEpicId('');
+                          setSelectedStoryId('');
                       } catch(err) {
                           alert('Protocol Failure: Task creation failed.');
                       } finally {
@@ -608,18 +615,52 @@ export default function App() {
               </>
           }
       >
-          <div className="space-y-4">
+          <div className="space-y-6">
+               <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target Epic</label>
+                    <select 
+                       value={selectedEpicId}
+                       onChange={(e) => {
+                           setSelectedEpicId(e.target.value);
+                           const epic = activeProject?.epics?.find((ep: any) => ep.id === e.target.value);
+                           setSelectedStoryId(epic?.stories?.[0]?.id || '');
+                       }}
+                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-bold text-slate-900"
+                    >
+                        <option value="">Select an Epic...</option>
+                        {activeProject?.epics?.map((epic: any) => (
+                            <option key={epic.id} value={epic.id}>{epic.name}</option>
+                        ))}
+                    </select>
+               </div>
+
+               <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target User Story</label>
+                    <select 
+                       value={selectedStoryId}
+                       onChange={(e) => setSelectedStoryId(e.target.value)}
+                       disabled={!selectedEpicId}
+                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-bold text-slate-900 disabled:opacity-50"
+                    >
+                        <option value="">Select a User Story...</option>
+                        {activeProject?.epics?.find((ep: any) => ep.id === selectedEpicId)?.stories?.map((st: any) => (
+                            <option key={st.id} value={st.id}>{st.name}</option>
+                        ))}
+                    </select>
+               </div>
+
                <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Intent Description</label>
                     <input 
                         type="text" 
                         value={newTaskName}
                         onChange={e => setNewTaskName(e.target.value)}
-                        placeholder="e.g. Optimize cache layer"
+                        placeholder="e.g. Purchase New Backup Servers"
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-bold text-slate-900"
                     />
-                </div>
-                <div className="space-y-1.5">
+               </div>
+
+               <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Criticality Level</label>
                     <select 
                         value={newTaskPriority}
@@ -631,7 +672,7 @@ export default function App() {
                         <option value="High">High</option>
                         <option value="Critical">Critical</option>
                     </select>
-                </div>
+               </div>
           </div>
       </Modal>
 
