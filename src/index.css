@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-[#F1F5F9] antialiased text-slate-900;
+  }
+}
+
+@layer components {
+  .prose h3 {
+    @apply font-sans font-medium tracking-tight text-zinc-900;
+  }
+}
