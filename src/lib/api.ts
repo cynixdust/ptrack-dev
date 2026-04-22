@@ -58,14 +58,16 @@ export const api = {
     return res.json();
   },
   updateProject: async (id: string, updates: Partial<Project>): Promise<void> => {
-    await fetch(`/api/projects/${id}`, {
+    const res = await fetch(`/api/projects/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
+    if (!res.ok) throw new Error("Strategic update failed");
   },
   deleteProject: async (id: string): Promise<void> => {
-    await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Strategic decommissioning failed");
   },
   getProjectDetails: async (id: string): Promise<Project & { epics: (Epic & { stories: UserStory[] })[] }> => {
     const res = await fetch(`/api/projects/${id}/full`);
