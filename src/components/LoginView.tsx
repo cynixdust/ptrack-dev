@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { api } from '../lib/api';
-import { Button, Card } from './ui';
+import { Button, Card, cn } from './ui';
 import { Lock, User as UserIcon } from 'lucide-react';
 
-export function LoginView({ onLogin }: { onLogin: (user: any) => void }) {
+import { AppSettings } from '../types';
+
+export function LoginView({ onLogin, settings }: { onLogin: (user: any) => void, settings: AppSettings | null }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,8 +24,15 @@ export function LoginView({ onLogin }: { onLogin: (user: any) => void }) {
     <div className="min-h-screen flex items-center justify-center bg-[#F1F5F9]">
       <Card className="w-full max-w-md p-8 animate-in fade-in zoom-in duration-300">
         <div className="flex flex-col items-center mb-8">
-          <div className="h-16 w-16 bg-red-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-red-200">
-            <Lock className="text-white" size={32} />
+          <div className={cn(
+            "h-16 w-16 mb-4 flex items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-red-200",
+            settings?.app_logo ? "bg-white" : "bg-red-600"
+          )}>
+            {settings?.app_logo ? (
+                <img src={settings.app_logo} alt="Logo" className="h-full w-full object-contain" referrerPolicy="no-referrer" />
+            ) : (
+                <Lock className="text-white" size={32} />
+            )}
           </div>
           <h2 className="text-2xl font-bold text-slate-900">Welcome Back</h2>
           <p className="text-slate-500">Sign in to your Tracker Pro account</p>

@@ -40,6 +40,17 @@ try {
         // Set a default company for existing projects if they existed
         db.prepare("UPDATE projects SET company_id = 'comp-1' WHERE company_id IS NULL").run();
     }
+
+    const taskColumns = db.prepare("PRAGMA table_info(tasks)").all() as any[];
+    if (!taskColumns.some(c => c.name === 'notes')) {
+        db.prepare("ALTER TABLE tasks ADD COLUMN notes TEXT").run();
+    }
+    if (!taskColumns.some(c => c.name === 'is_na')) {
+        db.prepare("ALTER TABLE tasks ADD COLUMN is_na INTEGER DEFAULT 0").run();
+    }
+    if (!taskColumns.some(c => c.name === 'owner_id')) {
+        db.prepare("ALTER TABLE tasks ADD COLUMN owner_id TEXT").run();
+    }
 } catch (e) {
     // Table might not exist yet, handled by CREATE TABLE IF NOT EXISTS below
 }
@@ -106,6 +117,9 @@ db.exec(`
     due_date TEXT,
     estimated_time REAL DEFAULT 0,
     actual_time REAL DEFAULT 0,
+    notes TEXT,
+    is_na INTEGER DEFAULT 0,
+    owner_id TEXT,
     FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
   );
 
@@ -322,11 +336,11 @@ app.get("/api/tasks/:id", authenticateToken, (req, res) => {
 });
 
 app.post("/api/tasks", authenticateToken, (req, res) => {
-    const { story_id, name, priority, estimated_time, due_date } = req.body;
+    const { story_id, name, priority, estimated_time, due_date, notes, is_na, owner_id } = req.body;
     const id = `task-${Date.now()}`;
-    db.prepare("INSERT INTO tasks (id, story_id, name, priority, estimated_time, due_date) VALUES (?, ?, ?, ?, ?, ?)")
-      .run(id, story_id, name, priority || 'Medium', estimated_time || 0, due_date || null);
-    res.json({ id, story_id, name });
+    db.prepare("INSERT INTO tasks (id, story_id, name, priority, estimated_time, due_date, notes, is_na, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(id, story_id, name, priority || 'Medium', estimated_time || 0, due_date || null, notes || null, is_na ? 1 : 0, owner_id || null);
+    res.json({ id, story_id, name, notes, is_na, owner_id });
 });
 
 app.delete("/api/tasks/:id", authenticateToken, (req, res) => {

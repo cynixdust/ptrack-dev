@@ -58,6 +58,10 @@ export interface Task {
   due_date: string;
   estimated_time: number;
   actual_time: number;
+  notes?: string;
+  is_na?: boolean;
+  owner_id?: string;
+  owner_name?: string;
 }
 
 export interface Sprint {
