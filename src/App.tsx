@@ -277,9 +277,14 @@ export default function App() {
                      <Sparkles className="text-white" size={20} />
                  )}
               </div>
-              <span className="text-xl font-black tracking-tighter text-slate-900 truncate">
-                 {settings?.app_name || "SCRUMFLOW"}
-              </span>
+              <div className="flex flex-col truncate">
+                <span className="text-xl font-black tracking-tighter text-slate-900 leading-tight">
+                  Hyde's
+                </span>
+                <span className="text-sm font-black text-red-600 tracking-[0.2em] uppercase leading-tight">
+                  Tracker Pro
+                </span>
+              </div>
             </div>
 
             <div className="flex gap-2 mb-8">
