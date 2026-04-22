@@ -57,6 +57,16 @@ export const api = {
     });
     return res.json();
   },
+  updateProject: async (id: string, updates: Partial<Project>): Promise<void> => {
+    await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+  },
+  deleteProject: async (id: string): Promise<void> => {
+    await fetch(`/api/projects/${id}`, { method: "DELETE" });
+  },
   getProjectDetails: async (id: string): Promise<Project & { epics: (Epic & { stories: UserStory[] })[] }> => {
     const res = await fetch(`/api/projects/${id}/full`);
     return res.json();

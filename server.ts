@@ -278,6 +278,22 @@ app.post("/api/projects", authenticateToken, (req, res) => {
   res.status(201).json({ id, company_id, name, description });
 });
 
+app.patch("/api/projects/:id", authenticateToken, (req, res) => {
+    const { id } = req.params;
+    const updates = req.body;
+    const keys = Object.keys(updates);
+    if (keys.length === 0) return res.json({ success: true, message: "No updates" });
+    const values = Object.values(updates);
+    const setClause = keys.map(k => `${k} = ?`).join(", ");
+    db.prepare(`UPDATE projects SET ${setClause} WHERE id = ?`).run(...values, id);
+    res.json({ success: true });
+});
+
+app.delete("/api/projects/:id", authenticateToken, (req, res) => {
+    db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+});
+
 app.get("/api/projects/:id/full", authenticateToken, (req, res) => {
   const { id } = req.params;
   const project = db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as any;

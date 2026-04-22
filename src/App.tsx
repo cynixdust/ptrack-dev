@@ -133,6 +133,8 @@ export default function App() {
   const [customStoryName, setCustomStoryName] = useState<string>('');
   const [newStrategyName, setNewStrategyName] = useState('');
   const [newStrategyDesc, setNewStrategyDesc] = useState('');
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [editingTaskName, setEditingTaskName] = useState('');
   const [editingTaskPriority, setEditingTaskPriority] = useState<Priority>('Medium');
   const [editingTaskOwner, setEditingTaskOwner] = useState<string>('');
@@ -579,17 +581,122 @@ export default function App() {
                             </div>
                         </div>
                     </Modal>
+
+                    {/* Edit Strategy Modal */}
+                    <Modal 
+                        isOpen={!!editingProject} 
+                        onClose={() => setEditingProject(null)}
+                        title="Optimize Strategy Parameters"
+                        footer={
+                            <>
+                                <Button variant="outline" onClick={() => setEditingProject(null)}>Cancel</Button>
+                                <Button onClick={async () => {
+                                    if (!editingProject) return;
+                                    try {
+                                        setAuthLoading(true);
+                                        await api.updateProject(editingProject.id, {
+                                            name: editingProject.name,
+                                            description: editingProject.description
+                                        });
+                                        await loadProjects();
+                                        setEditingProject(null);
+                                    } catch(err) {
+                                        alert('Protocol Failure: Optimization interrupted.');
+                                    } finally {
+                                        setAuthLoading(false);
+                                    }
+                                }}>Apply Changes</Button>
+                            </>
+                        }
+                    >
+                        {editingProject && (
+                            <div className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Strategy Name</label>
+                                    <input 
+                                        type="text" 
+                                        value={editingProject.name}
+                                        onChange={e => setEditingProject({...editingProject, name: e.target.value})}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-bold text-slate-900"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Objective</label>
+                                    <textarea 
+                                        value={editingProject.description || ''}
+                                        onChange={e => setEditingProject({...editingProject, description: e.target.value})}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all text-sm min-h-[100px]"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </Modal>
+
+                    {/* Delete Project Modal */}
+                    <Modal 
+                        isOpen={!!deletingProjectId} 
+                        onClose={() => setDeletingProjectId(null)}
+                        title="Decommission Strategy"
+                        footer={
+                            <>
+                                <Button variant="outline" onClick={() => setDeletingProjectId(null)}>Abort</Button>
+                                <Button variant="danger" onClick={async () => {
+                                    if (!deletingProjectId) return;
+                                    try {
+                                        setAuthLoading(true);
+                                        await api.deleteProject(deletingProjectId);
+                                        if (activeProjectId === deletingProjectId) {
+                                            setActiveProjectId(null);
+                                        }
+                                        await loadProjects();
+                                        setDeletingProjectId(null);
+                                    } catch(err) {
+                                        alert('Protocol Failure: Decommissioning interrupted.');
+                                    } finally {
+                                        setAuthLoading(false);
+                                    }
+                                }}>Confirm Decommission</Button>
+                            </>
+                        }
+                    >
+                        <div className="text-center p-4">
+                            <div className="h-16 w-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Trash2 size={32} />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Are you certain?</h3>
+                            <p className="text-sm text-slate-500 font-medium">This strategy will be permanently wiped from the reactor core. This action cannot be revoked.</p>
+                        </div>
+                    </Modal>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {Array.isArray(projects) && projects.map(p => (
-                        <Card key={p.id} className="p-8 group hover:border-red-600 hover:shadow-xl hover:shadow-red-100 transition-all border-slate-200 cursor-pointer bg-white" onClick={() => { setActiveProjectId(p.id); setActiveTab('board'); }}>
+                        <Card key={p.id} className="p-8 group hover:border-red-600 hover:shadow-xl hover:shadow-red-100 transition-all border-slate-200 cursor-pointer bg-white relative overflow-hidden" onClick={() => { setActiveProjectId(p.id); setActiveTab('board'); }}>
+                           <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                               {isCreator && (
+                                   <>
+                                       <button 
+                                           onClick={(e) => { e.stopPropagation(); setEditingProject(p); }}
+                                           className="h-8 w-8 bg-white shadow-md border border-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 transition-colors"
+                                       >
+                                           <Edit2 size={14} />
+                                       </button>
+                                       <button 
+                                           onClick={(e) => { e.stopPropagation(); setDeletingProjectId(p.id); }}
+                                           className="h-8 w-8 bg-white shadow-md border border-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"
+                                       >
+                                           <Trash2 size={14} />
+                                       </button>
+                                   </>
+                               )}
+                           </div>
                            <div className="flex justify-between mb-8">
                              <div className="h-12 w-12 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center font-bold text-slate-900 group-hover:bg-red-600 group-hover:text-white transition-all transform group-hover:scale-110 duration-300">{p.name[0]}</div>
-                             <Badge variant="success">Active</Badge>
+                             <Badge variant="success">Active Strategy</Badge>
                            </div>
                            <h3 className="text-xl font-bold mb-2 text-slate-900">{p.name}</h3>
-                           <p className="text-sm text-slate-400 mb-8 max-w-[200px]">Strategic planning and scrum execution for the team.</p>
+                           <p className="text-sm text-slate-400 mb-8 max-w-[200px] line-clamp-2">{p.description || 'Strategic planning and scrum execution for the team.'}</p>
                            <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
-                             <span className="tracking-widest">CREATED {format(new Date(p.created_at), 'MMM yyyy').toUpperCase()}</span>
+                             <span className="tracking-widest uppercase">ESTABLISHED {format(new Date(p.created_at), 'MMM yyyy')}</span>
                              <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform text-red-500" />
                            </div>
                         </Card>
