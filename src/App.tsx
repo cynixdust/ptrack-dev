@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, Trash2, LayoutDashboard, Kanban, Settings as SettingsIcon, Clock, CheckCircle2, Plus, Search, Bell, ChevronRight, TrendingUp, BarChart3, Sparkles, Play, Pause, LogOut, Building, FolderLock, FileText, Calendar, ChevronDown, Filter } from 'lucide-react';
+import { Edit2, Trash2, LayoutDashboard, Kanban, Settings as SettingsIcon, Clock, CheckCircle2, Plus, Search, Bell, ChevronRight, TrendingUp, BarChart3, Sparkles, Play, Pause, LogOut, Building, FolderLock, FileText, Calendar, ChevronDown, Filter, Menu, PanelLeftClose } from 'lucide-react';
 import { Button, Card, Badge, cn } from './components/ui';
 import { format } from 'date-fns';
 import { 
@@ -22,7 +22,7 @@ import { LoginView } from './components/LoginView';
 import { SettingsView } from './components/SettingsView';
 import { CompanySwitcher } from './components/CompanySwitcher';
 import { GoogleGenAI } from "@google/genai";
-import { exportToPDF, exportToExcel } from './lib/export';
+import { exportToPDF, exportToExcel, exportUserManual } from './lib/export';
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-lg' }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode, footer?: React.ReactNode, maxWidth?: string }) {
@@ -32,7 +32,7 @@ function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-lg'
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className={cn("bg-white rounded-[2rem] shadow-2xl w-full overflow-hidden border border-slate-200/50 pointer-events-auto", maxWidth)}
+        className={cn("bg-white rounded-[2rem] shadow-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200/50 pointer-events-auto custom-scrollbar", maxWidth)}
       >
         <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex flex-col">
@@ -118,6 +118,10 @@ export default function App() {
   const [time, setTime] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('scrumflow_sidebar_open');
+    return saved === null ? true : saved === 'true';
+  });
   const [stats, setStats] = useState<ProjectStats | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
@@ -197,6 +201,10 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
+  useEffect(() => {
+    localStorage.setItem('scrumflow_sidebar_open', isSidebarOpen.toString());
+  }, [isSidebarOpen]);
+
   const checkAuth = async () => {
     try {
       const u = await api.getMe();
@@ -264,9 +272,14 @@ export default function App() {
   return (
     <div className="flex h-screen bg-[#F1F5F9] text-slate-900 font-sans overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-20">
-        <div className="p-8 pb-6">
-            <div className="flex items-center gap-3 mb-8">
+      <motion.aside 
+        initial={false}
+        animate={{ width: isSidebarOpen ? 288 : 0, opacity: isSidebarOpen ? 1 : 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="bg-white border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-20 h-full overflow-hidden shrink-0"
+      >
+        <div className="p-6 pb-4 shrink-0">
+            <div className="flex items-center gap-3 mb-6">
               <div className={cn(
                 "h-10 w-10 flex items-center justify-center rounded-xl overflow-hidden",
                 settings?.app_logo ? "bg-transparent" : "bg-red-600 shadow-lg shadow-red-100 ring-2 ring-red-50"
@@ -287,7 +300,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex gap-2 mb-8">
+            <div className="flex gap-2 mb-6">
                <button 
                  onClick={() => window.location.reload()}
                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-white hover:shadow-sm transition-all"
@@ -309,70 +322,84 @@ export default function App() {
           />
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          <NavItem active={activeTab === 'dashboard'} icon={<LayoutDashboard size={20} />} label="Analytics" onClick={() => setActiveTab('dashboard')} />
-          <NavItem active={activeTab === 'tasks'} icon={<FileText size={20} />} label="Task List" onClick={() => setActiveTab('tasks')} />
-          <NavItem active={activeTab === 'projects'} icon={<FolderLock size={20} />} label="Strategies" onClick={() => setActiveTab('projects')} />
-          <NavItem active={activeTab === 'board'} icon={<Kanban size={20} />} label="Task Board" onClick={() => setActiveTab('board')} />
-          <NavItem active={activeTab === 'reports'} icon={<BarChart3 size={20} />} label="Reporting" onClick={() => setActiveTab('reports')} />
-          <NavItem active={activeTab === 'settings'} icon={<SettingsIcon size={20} />} label="System Config" onClick={() => setActiveTab('settings')} />
-        </nav>
+         <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto min-h-0 scrollbar-hide">
+           <NavItem active={activeTab === 'dashboard'} icon={<LayoutDashboard size={20} />} label="Analytics" onClick={() => setActiveTab('dashboard')} />
+           <NavItem active={activeTab === 'tasks'} icon={<FileText size={20} />} label="Task List" onClick={() => setActiveTab('tasks')} />
+           <NavItem active={activeTab === 'projects'} icon={<FolderLock size={20} />} label="Strategies" onClick={() => setActiveTab('projects')} />
+           <NavItem active={activeTab === 'board'} icon={<Kanban size={20} />} label="Task Board" onClick={() => setActiveTab('board')} />
+           <NavItem active={activeTab === 'reports'} icon={<BarChart3 size={20} />} label="Reporting" onClick={() => setActiveTab('reports')} />
+           <NavItem active={activeTab === 'settings'} icon={<SettingsIcon size={20} />} label="System Config" onClick={() => setActiveTab('settings')} />
+           
+           <button 
+             onClick={exportUserManual}
+             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-50 text-slate-400 hover:text-red-600 group mt-4 border border-dashed border-slate-200 hover:border-red-200 shrink-0"
+           >
+             <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-100 group-hover:bg-red-50 text-slate-400 group-hover:text-red-600 transition-colors">
+               <FileText size={16} />
+             </div>
+             <div className="flex flex-col items-start translate-y-[1px]">
+               <span className="uppercase tracking-widest text-[9px] font-black">Resources</span>
+               <span className="text-[10px]">User Manual PDF</span>
+             </div>
+           </button>
 
-        <div className="px-4 py-6 border-t border-slate-50">
-           <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 hover:border-red-100 transition-colors group cursor-default shadow-inner">
-               <div className="flex justify-between items-center mb-4">
-                   <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tactical Pulse</h5>
-                   <motion.div 
-                     animate={{ scale: [1, 1.2, 1] }} 
-                     transition={{ repeat: Infinity, duration: 2 }}
-                     className="h-1.5 w-1.5 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]" 
-                   />
-               </div>
-               
-               <div className="h-24 flex items-center justify-center relative transform perspective-500">
-                   <ResponsiveContainer width="100%" height="100%">
-                       <PieChart>
-                           <Pie
-                               data={[
-                                   { name: 'Active', value: 70, color: '#dc2626' },
-                                   { name: 'Idle', value: 30, color: '#f1f5f9' },
-                               ]}
-                               cx="50%"
-                               cy="50%"
-                               innerRadius={25}
-                               outerRadius={35}
-                               paddingAngle={5}
-                               dataKey="value"
-                               stroke="none"
-                           >
-                               <Cell fill="#dc2626" />
-                               <Cell fill="#f1f5f9" />
-                           </Pie>
-                       </PieChart>
-                   </ResponsiveContainer>
-                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                       <span className="text-[11px] font-black text-slate-700 tracking-tighter">70%</span>
-                   </div>
-               </div>
-               
-               <div className="mt-4 flex flex-col gap-1.5">
-                   <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest">
-                       <span className="text-slate-400">Throughput</span>
-                       <span className="text-red-600 font-black">+14.2%</span>
-                   </div>
-                   <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                       <motion.div 
-                         initial={{ width: 0 }}
-                         animate={{ width: '70.2%' }}
-                         className="h-full bg-red-600 rounded-full" 
-                       />
-                   </div>
-               </div>
+           {/* Move Tactical Pulse inside scrollable nav or just below it with flex-shrink handling */}
+           <div className="pt-6 mt-4 border-t border-slate-50 shrink-0 mb-4">
+              <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 hover:border-red-100 transition-colors group cursor-default shadow-inner">
+                  <div className="flex justify-between items-center mb-4">
+                      <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tactical Pulse</h5>
+                      <motion.div 
+                        animate={{ scale: [1, 1.2, 1] }} 
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="h-1.5 w-1.5 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]" 
+                      />
+                  </div>
+                  
+                  <div className="h-24 flex items-center justify-center relative transform perspective-500">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                              <Pie
+                                  data={[
+                                      { name: 'Active', value: 70, color: '#dc2626' },
+                                      { name: 'Idle', value: 30, color: '#f1f5f9' },
+                                  ]}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={25}
+                                  outerRadius={35}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                                  stroke="none"
+                              >
+                                  <Cell fill="#dc2626" />
+                                  <Cell fill="#f1f5f9" />
+                              </Pie>
+                          </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-[11px] font-black text-slate-700 tracking-tighter">70%</span>
+                      </div>
+                  </div>
+                  
+                  <div className="mt-4 flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest">
+                          <span className="text-slate-400">Throughput</span>
+                          <span className="text-red-600 font-black">+14.2%</span>
+                      </div>
+                      <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: '70.2%' }}
+                            className="h-full bg-red-600 rounded-full" 
+                          />
+                      </div>
+                  </div>
+              </div>
            </div>
-        </div>
+         </nav>
 
-        <div className="p-6 mt-auto">
-            <div className="mt-6 flex items-center justify-between px-2">
+        <div className="p-4 mt-auto shrink-0 border-t border-slate-100 bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-3">
                     <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center font-bold text-slate-400 text-xs cursor-help" title={`Logged in as ${user.username}`}>
                         {user.username[0].toUpperCase()}
@@ -384,17 +411,26 @@ export default function App() {
                 </button>
             </div>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto flex flex-col relative">
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-10 sticky top-0 z-10">
-          <div className="flex items-center gap-4 text-xs font-semibold tracking-tight text-slate-400">
-            <span className="uppercase">Workspace</span>
-            <span className="text-slate-200">/</span>
-            <span className="text-slate-900 font-bold">{activeCompany?.name || 'Loading'}</span>
-            <ChevronRight size={14} />
-            <span className="text-red-600 font-bold">{activeProjectId && Array.isArray(projects) ? projects.find(p => p.id === activeProjectId)?.name : 'Strategies'}</span>
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-10 sticky top-0 z-10 transition-all duration-300">
+          <div className="flex items-center gap-6 text-xs font-semibold tracking-tight text-slate-400">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-100 hover:shadow-sm transition-all shrink-0"
+              title={isSidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
+            >
+              {isSidebarOpen ? <PanelLeftClose size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="flex items-center gap-4">
+              <span className="uppercase">Workspace</span>
+              <span className="text-slate-200">/</span>
+              <span className="text-slate-900 font-bold">{activeCompany?.name || 'Loading'}</span>
+              <ChevronRight size={14} />
+              <span className="text-red-600 font-bold">{activeProjectId && Array.isArray(projects) ? projects.find(p => p.id === activeProjectId)?.name : 'Strategies'}</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-6">
