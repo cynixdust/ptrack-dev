@@ -245,6 +245,19 @@ export default function App() {
       setUser(null);
   };
 
+  const handleRefresh = async () => {
+    setAuthLoading(true);
+    try {
+      await Promise.all([
+        checkAuth(),
+        loadProjects(),
+        activeProjectId ? loadProjectDetails() : Promise.resolve()
+      ]);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-[#F1F5F9] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Initializing ScrumMaster...</div>;
   if (!user) return <LoginView onLogin={(u) => setUser(u)} settings={settings} />;
 
@@ -270,7 +283,7 @@ export default function App() {
           <CompanySwitcher 
             activeCompany={activeCompany} 
             onSelect={setActiveCompany} 
-            onRefresh={loadProjects}
+            onRefresh={handleRefresh}
           />
         </div>
 
@@ -363,6 +376,27 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-widest gap-2 bg-white border-slate-200 hover:border-red-500 hover:text-red-500 transition-all shadow-sm"
+                    onClick={handleRefresh}
+                >
+                    <Sparkles size={14} className={cn("text-red-500", authLoading && "animate-spin")} />
+                    App Sync
+                </Button>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-widest gap-2 bg-white border-slate-200 hover:border-red-500 hover:text-red-500 transition-all shadow-sm"
+                    onClick={() => window.location.reload()}
+                >
+                    <TrendingUp size={14} className="text-red-500" />
+                    App Refresh
+                </Button>
+            </div>
+
             <div className="flex items-center gap-4 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
                 <div className="flex flex-col items-end">
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Focus Session</span>
@@ -791,6 +825,8 @@ export default function App() {
                           setAuthLoading(true);
                           await api.createTask({
                               story_id: selectedStoryId,
+                              story_name: customStoryName || undefined,
+                              project_id: activeProjectId || undefined,
                               name: newTaskName,
                               priority: newTaskPriority,
                               owner_id: newTaskOwner || undefined,
@@ -798,7 +834,7 @@ export default function App() {
                               estimated_time: parseFloat(newTaskEst) || 0,
                               notes: newTaskNotes || undefined,
                               status: 'To Do'
-                          });
+                          } as any);
                           await loadProjectDetails();
                           setIsAddTaskModalOpen(false);
                           setNewTaskName('');
@@ -854,8 +890,7 @@ export default function App() {
                                    setSelectedStoryId(e.target.value);
                                    if (e.target.value) setCustomStoryName('');
                                }}
-                               className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-slate-400 cursor-not-allowed opacity-60"
-                               disabled
+                               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-slate-900 shadow-sm"
                            >
                                <option value="">Select a User Story...</option>
                                {activeProject?.epics?.flatMap((ep: any) => ep.stories || []).map((st: any) => (

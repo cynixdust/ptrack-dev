@@ -33,6 +33,16 @@ export const api = {
     });
     return res.json();
   },
+  updateCompany: async (id: string, updates: Partial<Company>): Promise<void> => {
+    await fetch(`/api/companies/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+  },
+  deleteCompany: async (id: string): Promise<void> => {
+    await fetch(`/api/companies/${id}`, { method: "DELETE" });
+  },
 
   // Projects
   getProjectsByCompany: async (companyId: string): Promise<Project[]> => {

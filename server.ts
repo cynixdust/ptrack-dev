@@ -51,6 +51,9 @@ try {
     if (!taskColumns.some(c => c.name === 'owner_id')) {
         db.prepare("ALTER TABLE tasks ADD COLUMN owner_id TEXT").run();
     }
+    if (!taskColumns.some(c => c.name === 'owner_name')) {
+        db.prepare("ALTER TABLE tasks ADD COLUMN owner_name TEXT").run();
+    }
 } catch (e) {
     // Table might not exist yet, handled by CREATE TABLE IF NOT EXISTS below
 }
@@ -120,6 +123,7 @@ db.exec(`
     notes TEXT,
     is_na INTEGER DEFAULT 0,
     owner_id TEXT,
+    owner_name TEXT,
     FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
   );
 
@@ -251,6 +255,17 @@ app.delete("/api/companies/:id", authenticateToken, (req, res) => {
     res.json({ success: true });
 });
 
+app.patch("/api/companies/:id", authenticateToken, (req, res) => {
+    const { id } = req.params;
+    const updates = req.body;
+    const keys = Object.keys(updates);
+    if (keys.length === 0) return res.json({ success: true, message: "No updates" });
+    const values = Object.values(updates);
+    const setClause = keys.map(k => `${k} = ?`).join(", ");
+    db.prepare(`UPDATE companies SET ${setClause} WHERE id = ?`).run(...values, id);
+    res.json({ success: true });
+});
+
 // Project Routes (Filtered by Company)
 app.get("/api/companies/:companyId/projects", authenticateToken, (req, res) => {
     const projects = db.prepare("SELECT * FROM projects WHERE company_id = ?").all(req.params.companyId);
@@ -336,11 +351,41 @@ app.get("/api/tasks/:id", authenticateToken, (req, res) => {
 });
 
 app.post("/api/tasks", authenticateToken, (req, res) => {
-    const { story_id, name, priority, estimated_time, due_date, notes, is_na, owner_id } = req.body;
+    let { story_id, name, priority, estimated_time, due_date, notes, is_na, owner_id, owner_name, story_name, project_id } = req.body;
+    
+    // Auto-create story if story_id is missing but story_name/project_id exists
+    if (!story_id && story_name && project_id) {
+        // Find existing story by name in project
+        const existingStory = db.prepare(`
+            SELECT stories.* FROM stories 
+            JOIN epics ON stories.epic_id = epics.id 
+            WHERE epics.project_id = ? AND stories.name = ?
+        `).get(project_id, story_name) as any;
+
+        if (existingStory) {
+            story_id = existingStory.id;
+        } else {
+            // Create a default epic if project has none, or use first
+            let epic = db.prepare("SELECT id FROM epics WHERE project_id = ? LIMIT 1").get(project_id) as any;
+            if (!epic) {
+                const epicId = `epic-${Date.now()}`;
+                db.prepare("INSERT INTO epics (id, project_id, name, description) VALUES (?, ?, ?, ?)")
+                  .run(epicId, project_id, "Tactical Operations", "Auto-generated for new intents");
+                epic = { id: epicId };
+            }
+            const newStoryId = `story-${Date.now()}`;
+            db.prepare("INSERT INTO stories (id, epic_id, name, description) VALUES (?, ?, ?, ?)")
+              .run(newStoryId, epic.id, story_name, "Strategic requirement");
+            story_id = newStoryId;
+        }
+    }
+
+    if (!story_id) return res.status(400).json({ error: "story_id is required" });
+
     const id = `task-${Date.now()}`;
-    db.prepare("INSERT INTO tasks (id, story_id, name, priority, estimated_time, due_date, notes, is_na, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .run(id, story_id, name, priority || 'Medium', estimated_time || 0, due_date || null, notes || null, is_na ? 1 : 0, owner_id || null);
-    res.json({ id, story_id, name, notes, is_na, owner_id });
+    db.prepare("INSERT INTO tasks (id, story_id, name, priority, estimated_time, due_date, notes, is_na, owner_id, owner_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(id, story_id, name, priority || 'Medium', estimated_time || 0, due_date || null, notes || null, is_na ? 1 : 0, owner_id || null, owner_name || null);
+    res.json({ id, story_id, name, notes, is_na, owner_id, owner_name });
 });
 
 app.delete("/api/tasks/:id", authenticateToken, (req, res) => {
