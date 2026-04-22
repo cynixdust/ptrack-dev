@@ -28,11 +28,11 @@ import { exportToPDF, exportToExcel } from './lib/export';
 function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-lg' }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode, footer?: React.ReactNode, maxWidth?: string }) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 pointer-events-none">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className={cn("bg-white rounded-[2rem] shadow-2xl w-full overflow-hidden border border-slate-200/50", maxWidth)}
+        className={cn("bg-white rounded-[2rem] shadow-2xl w-full overflow-hidden border border-slate-200/50 pointer-events-auto", maxWidth)}
       >
         <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex flex-col">
@@ -266,19 +266,36 @@ export default function App() {
       {/* Sidebar */}
       <aside className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-20">
         <div className="p-8 pb-6">
-          <div className="flex items-center gap-3 mb-8">
-            <div className={cn(
-              "h-10 w-10 flex items-center justify-center rounded-xl overflow-hidden",
-              settings?.app_logo ? "bg-white" : "bg-red-600 shadow-lg shadow-red-100 ring-2 ring-red-50"
-            )}>
-               {settings?.app_logo ? (
-                   <img src={settings.app_logo} alt="Logo" className="h-full w-full object-contain" referrerPolicy="no-referrer" />
-               ) : (
-                   <Sparkles className="text-white" size={20} />
-               )}
+            <div className="flex items-center gap-3 mb-8">
+              <div className={cn(
+                "h-10 w-10 flex items-center justify-center rounded-xl overflow-hidden",
+                settings?.app_logo ? "bg-transparent" : "bg-red-600 shadow-lg shadow-red-100 ring-2 ring-red-50"
+              )}>
+                 {settings?.app_logo ? (
+                     <img src={settings.app_logo} alt="Logo" className="h-full w-full object-contain" referrerPolicy="no-referrer" />
+                 ) : (
+                     <Sparkles className="text-white" size={20} />
+                 )}
+              </div>
+              <span className="text-xl font-black tracking-tighter text-slate-900 truncate">
+                 {settings?.app_name || "SCRUMFLOW"}
+              </span>
             </div>
-            <span className="text-xl font-black tracking-tighter text-slate-900">Hyde's<span className="text-red-600"> Tracker Pro</span></span>
-          </div>
+
+            <div className="flex gap-2 mb-8">
+               <button 
+                 onClick={() => window.location.reload()}
+                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-white hover:shadow-sm transition-all"
+               >
+                 <Clock size={12} className="text-red-600" /> Refresh
+               </button>
+               <button 
+                 onClick={handleRefresh}
+                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-700 shadow-lg shadow-red-100 transition-all"
+               >
+                 <Sparkles size={12} /> Sync
+               </button>
+            </div>
 
           <CompanySwitcher 
             activeCompany={activeCompany} 
@@ -376,27 +393,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-widest gap-2 bg-white border-slate-200 hover:border-red-500 hover:text-red-500 transition-all shadow-sm"
-                    onClick={handleRefresh}
-                >
-                    <Sparkles size={14} className={cn("text-red-500", authLoading && "animate-spin")} />
-                    App Sync
-                </Button>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-widest gap-2 bg-white border-slate-200 hover:border-red-500 hover:text-red-500 transition-all shadow-sm"
-                    onClick={() => window.location.reload()}
-                >
-                    <TrendingUp size={14} className="text-red-500" />
-                    App Refresh
-                </Button>
-            </div>
-
             <div className="flex items-center gap-4 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
                 <div className="flex flex-col items-end">
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Focus Session</span>
@@ -902,13 +898,14 @@ export default function App() {
                                <input 
                                    type="text"
                                    list="existing-stories"
+                                   autoComplete="off"
                                    value={customStoryName}
                                    onChange={(e) => {
                                        setCustomStoryName(e.target.value);
                                        if (e.target.value) setSelectedStoryId('');
                                    }}
                                    placeholder="Type a story name..."
-                                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-bold text-slate-900"
+                                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-bold text-slate-900 relative z-10"
                                />
                                <datalist id="existing-stories">
                                    {activeProject?.epics?.flatMap((ep: any) => ep.stories || []).map((st: any) => (
@@ -1047,7 +1044,7 @@ function Dashboard({ stats }: { stats: ProjectStats | null }) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className="space-y-10 pb-20 perspective-1000"
+      className="space-y-10 pb-20 perspective-1000 p-2"
     >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <StatCard title="Total Strategies" value={stats?.totalProjects.toString() || '0'} growth="+2" icon={<BarChart3 />} />
@@ -1057,7 +1054,7 @@ function Dashboard({ stats }: { stats: ProjectStats | null }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card className="lg:col-span-2 p-6 bg-white border-slate-200 shadow-xl shadow-slate-100/50 hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
+          <Card className="lg:col-span-2 p-6 bg-white/70 backdrop-blur-md border-white/50 shadow-[0_20px_50px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_rgba(220,38,38,0.1)] transition-all duration-500 transform hover:rotate-x-[1deg] hover:-translate-y-2">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 font-sans flex items-center gap-2">
                 <BarChart3 size={14} className="text-red-500" />
                 Strategic Sprint Performance
@@ -1090,7 +1087,7 @@ function Dashboard({ stats }: { stats: ProjectStats | null }) {
             </div>
           </Card>
 
-          <Card className="p-6 bg-white border-slate-200 shadow-xl shadow-slate-100/50 hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
+          <Card className="p-6 bg-white/70 backdrop-blur-md border-white/50 shadow-[0_20px_50px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_rgba(220,38,38,0.1)] transition-all duration-500 transform hover:rotate-x-[1deg] hover:-translate-y-2">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 font-sans flex items-center gap-2">
                 <Sparkles size={14} className="text-red-500" />
                 Criticality Distribution
@@ -1123,11 +1120,11 @@ function Dashboard({ stats }: { stats: ProjectStats | null }) {
                   <span className="text-[8px] font-bold text-slate-400 uppercase">Impact</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="grid grid-cols-2 gap-2 mt-4 text-[9px] font-bold uppercase tracking-widest text-slate-500">
                 {pieData.map((d, i) => (
                     <div key={i} className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: d.color }} />
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">{d.name}</span>
+                        <span>{d.name}</span>
                     </div>
                 ))}
             </div>
