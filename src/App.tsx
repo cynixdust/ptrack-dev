@@ -600,8 +600,8 @@ export default function App() {
                                         });
                                         await loadProjects();
                                         setEditingProject(null);
-                                    } catch(err) {
-                                        alert('Protocol Failure: Optimization interrupted.');
+                                    } catch(err: any) {
+                                        alert(`Protocol Failure: ${err.message || 'Optimization interrupted.'}`);
                                     } finally {
                                         setAuthLoading(false);
                                     }
@@ -650,8 +650,8 @@ export default function App() {
                                         }
                                         await loadProjects();
                                         setDeletingProjectId(null);
-                                    } catch(err) {
-                                        alert('Protocol Failure: Decommissioning interrupted.');
+                                    } catch(err: any) {
+                                        alert(`Protocol Failure: ${err.message || 'Decommissioning interrupted.'}`);
                                     } finally {
                                         setAuthLoading(false);
                                     }

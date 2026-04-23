@@ -63,11 +63,17 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
-    if (!res.ok) throw new Error("Strategic update failed");
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || "Strategic update failed");
+    }
   },
   deleteProject: async (id: string): Promise<void> => {
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Strategic decommissioning failed");
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || "Strategic decommissioning failed");
+    }
   },
   getProjectDetails: async (id: string): Promise<Project & { epics: (Epic & { stories: UserStory[] })[] }> => {
     const res = await fetch(`/api/projects/${id}/full`);

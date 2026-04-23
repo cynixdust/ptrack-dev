@@ -279,19 +279,32 @@ app.post("/api/projects", authenticateToken, (req, res) => {
 });
 
 app.patch("/api/projects/:id", authenticateToken, (req, res) => {
-    const { id } = req.params;
-    const updates = req.body;
-    const keys = Object.keys(updates);
-    if (keys.length === 0) return res.json({ success: true, message: "No updates" });
-    const values = Object.values(updates);
-    const setClause = keys.map(k => `${k} = ?`).join(", ");
-    db.prepare(`UPDATE projects SET ${setClause} WHERE id = ?`).run(...values, id);
-    res.json({ success: true });
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        console.log(`Processing PATCH for project ${id}:`, updates);
+        const keys = Object.keys(updates);
+        if (keys.length === 0) return res.json({ success: true, message: "No updates" });
+        const values = Object.values(updates);
+        const setClause = keys.map(k => `${k} = ?`).join(", ");
+        db.prepare(`UPDATE projects SET ${setClause} WHERE id = ?`).run(...values, id);
+        res.json({ success: true });
+    } catch (err: any) {
+        console.error("Project update error:", err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.delete("/api/projects/:id", authenticateToken, (req, res) => {
-    db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
+    try {
+        const { id } = req.params;
+        console.log(`Processing DELETE for project ${id}`);
+        db.prepare("DELETE FROM projects WHERE id = ?").run(id);
+        res.json({ success: true });
+    } catch (err: any) {
+        console.error("Project deletion error:", err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.get("/api/projects/:id/full", authenticateToken, (req, res) => {
