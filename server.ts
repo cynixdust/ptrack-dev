@@ -327,7 +327,6 @@ app.get("/api/projects/:id/full", authenticateToken, (req, res) => {
 
 // User Management (Admin Only)
 app.get("/api/admin/users", authenticateToken, (req: any, res) => {
-    if (req.user.role !== 'Admin') return res.status(403).json({ error: "Forbidden" });
     const users = db.prepare("SELECT id, username, role, created_at FROM users").all();
     res.json(users);
 });

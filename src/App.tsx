@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, Trash2, LayoutDashboard, Kanban, Settings as SettingsIcon, Clock, CheckCircle2, Plus, Search, Bell, ChevronRight, TrendingUp, BarChart3, Sparkles, Play, Pause, LogOut, Building, FolderLock, FileText, Calendar, ChevronDown, Filter, Menu, PanelLeftClose } from 'lucide-react';
+import { Edit2, Trash2, LayoutDashboard, Kanban, Settings as SettingsIcon, Clock, CheckCircle2, Plus, Search, Bell, ChevronRight, TrendingUp, BarChart3, Sparkles, Play, Pause, LogOut, Building, FolderLock, FileText, Calendar, ChevronDown, Filter, Menu, PanelLeftClose, RotateCcw } from 'lucide-react';
 import { Button, Card, Badge, cn } from './components/ui';
 import { format } from 'date-fns';
 import { 
@@ -441,14 +441,28 @@ export default function App() {
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Focus Session</span>
                     <span className="text-sm font-mono font-bold tabular-nums text-slate-900">{format(new Date(time * 1000), 'mm:ss')}</span>
                 </div>
-                <Button 
-                    variant={isTimerRunning ? 'outline' : 'primary'} 
-                    size="sm" 
-                    className="h-8 w-8 p-0 rounded-lg"
-                    onClick={() => setIsTimerRunning(!isTimerRunning)}
-                >
-                    {isTimerRunning ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button 
+                        variant={isTimerRunning ? 'outline' : 'primary'} 
+                        size="sm" 
+                        className="h-8 w-8 p-0 rounded-lg"
+                        onClick={() => setIsTimerRunning(!isTimerRunning)}
+                    >
+                        {isTimerRunning ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                        title="Reset Session"
+                        onClick={() => {
+                            setIsTimerRunning(false);
+                            setTime(0);
+                        }}
+                    >
+                        <RotateCcw size={14} />
+                    </Button>
+                </div>
             </div>
 
             <div className="relative group">
@@ -911,7 +925,7 @@ export default function App() {
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-bold text-slate-900"
                             >
                                 <option value="">Unassigned</option>
-                                {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+                                {Array.isArray(users) && users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                             </select>
                             <div className="mt-2">
                                  <input 
@@ -1078,7 +1092,7 @@ export default function App() {
                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-bold text-slate-900"
                          >
                              <option value="">Unassigned</option>
-                             {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+                             {Array.isArray(users) && users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                          </select>
                          <div className="mt-2">
                               <input 
@@ -1471,7 +1485,7 @@ function TaskListView({
                                     className="bg-transparent border-none outline-none w-full text-[10px] font-bold text-slate-500 cursor-pointer"
                                 >
                                     <option value="">{task.owner_name ? task.owner_name : 'Select...'}</option>
-                                    {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+                                    {Array.isArray(users) && users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                                 </select>
                                 {task.owner_name && !task.owner_id && (
                                     <span className="text-[8px] text-red-600 font-bold uppercase truncate px-1">{task.owner_name}</span>
@@ -1593,7 +1607,7 @@ function TaskListView({
                             className="bg-transparent border-none outline-none w-full text-[10px] font-bold text-slate-500 cursor-pointer"
                         >
                             <option value="">{quickTaskOwnerName ? quickTaskOwnerName : 'Owner...'}</option>
-                            {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+                            {Array.isArray(users) && users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                         </select>
                         <input 
                             type="text"
