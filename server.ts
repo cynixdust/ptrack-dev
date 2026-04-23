@@ -187,17 +187,15 @@ const seed = () => {
     }
 
     const projectCount = (db.prepare("SELECT COUNT(*) as count FROM projects").get() as any).count;
-    if (projectCount === 0) {
-        db.prepare("INSERT INTO projects (id, company_id, name, description) VALUES (?, ?, ?, ?)")
-            .run("proj-1", companyId, "Product Launch 2026", "Main project reveal.");
+    if (projectCount > 0) {
+        // Targeted purge of legacy demo IDs to ensure clean start
+        const legacyProjectIds = ['proj-1'];
+        db.prepare(`DELETE FROM projects WHERE id IN (${legacyProjectIds.map(() => '?').join(',')})`).run(...legacyProjectIds);
         
-        // Add a default epic/story/task for the seed project
-        db.prepare("INSERT INTO epics (id, project_id, name, description) VALUES (?, ?, ?, ?)")
-            .run("epic-1", "proj-1", "Initial Epic", "Getting started.");
-        db.prepare("INSERT INTO stories (id, epic_id, name, description, priority, status) VALUES (?, ?, ?, ?, ?, ?)")
-            .run("story-1", "epic-1", "Initial Story", "Setup the workspace.", "High", "To Do");
-        db.prepare("INSERT INTO tasks (id, story_id, name, status, priority, estimated_time) VALUES (?, ?, ?, ?, ?, ?)")
-            .run("task-1", "story-1", "First Task", "To Do", "Medium", 2);
+        // Also cleanup orphaned tasks/stories just in case
+        db.prepare("DELETE FROM tasks WHERE story_id NOT IN (SELECT id FROM stories)").run();
+        db.prepare("DELETE FROM stories WHERE epic_id NOT IN (SELECT id FROM epics)").run();
+        db.prepare("DELETE FROM epics WHERE project_id NOT IN (SELECT id FROM projects)").run();
     }
 }
 seed();
@@ -460,9 +458,9 @@ app.get("/api/reports/summary", authenticateToken, (req, res) => {
   
   // Performance history (last 4 sprints or months - simplified to recent 4 data points)
   const performance = [
-      { name: 'Sprint Alpha', progress: totalTasks > 0 ? Math.floor(Math.random() * 20) : 0 },
-      { name: 'Sprint Beta', progress: totalTasks > 0 ? Math.floor(Math.random() * 40) : 0 },
-      { name: 'Sprint Gamma', progress: totalTasks > 0 ? Math.floor(Math.random() * 60) : 0 },
+      { name: 'Sprint Alpha', progress: 0 },
+      { name: 'Sprint Beta', progress: 0 },
+      { name: 'Sprint Gamma', progress: 0 },
       { name: 'Active', progress: efficiency }
   ];
 
@@ -474,9 +472,9 @@ app.get("/api/reports/summary", authenticateToken, (req, res) => {
     efficiency,
     distribution,
     performance,
-    intelligenceScore: totalTasks > 0 ? Math.min(100, Math.round((completedTasks/totalTasks) * 90 + 10)) : 0,
-    complianceScore: totalTasks > 0 ? 85 : 0, // Placeholder for process matching
-    integrityScore: totalProjects > 0 ? 95 : 0
+    intelligenceScore: totalTasks > 0 ? Math.round((completedTasks/totalTasks) * 100) : 0,
+    complianceScore: totalTasks > 0 ? Math.min(100, Math.round((totalTasks / (totalProjects * 5 || 1)) * 100)) : 0, 
+    integrityScore: totalProjects > 0 ? 100 : 0
   };
   res.json(stats);
 });

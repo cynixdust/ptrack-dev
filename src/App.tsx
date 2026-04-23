@@ -1217,9 +1217,9 @@ function Dashboard({ stats }: { stats: ProjectStats | null }) {
     >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <StatCard title="Total Strategies" value={stats?.totalProjects.toString() || '0'} growth={stats?.totalProjects ? "+1" : "0"} icon={<BarChart3 />} />
-          <StatCard title="Strategic Velocity" value={stats?.totalTasks ? "42.5" : "0.0"} growth={stats?.totalTasks ? "+12%" : "0%"} icon={<TrendingUp />} />
-          <StatCard title="Team Efficiency" value={stats ? `${stats.efficiency}%` : "0%"} growth={stats?.efficiency ? "+2.4%" : "0%"} icon={<CheckCircle2 />} />
-          <StatCard title="Resource Allocation" value={`${Math.round(stats?.totalHours || 0)}h`} growth={stats?.totalHours ? "-4%" : "0%"} icon={<Clock />} />
+          <StatCard title="Strategic Velocity" value={stats && stats.totalTasks > 0 ? (stats.completedTasks / (stats.totalTasks || 1) * 10).toFixed(1) : "0.0"} growth="0%" icon={<TrendingUp />} />
+          <StatCard title="Team Efficiency" value={stats ? `${stats.efficiency}%` : "0%"} growth="0%" icon={<CheckCircle2 />} />
+          <StatCard title="Resource Allocation" value={`${Math.round(stats?.totalHours || 0)}h`} growth="0%" icon={<Clock />} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
