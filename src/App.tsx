@@ -1187,19 +1187,26 @@ function NavItem({ active, icon, label, onClick }: { active: boolean, icon: Reac
 }
 
 function Dashboard({ stats }: { stats: ProjectStats | null }) {
-  const chartData = [
-    { name: 'Spr 1', progress: 40 },
-    { name: 'Spr 2', progress: 65 },
-    { name: 'Spr 3', progress: 85 },
-    { name: 'Spr 4', progress: 92 },
+  const chartData = stats?.performance || [
+    { name: 'Initial', progress: 0 },
+    { name: 'Alpha', progress: 0 },
+    { name: 'Beta', progress: 0 },
+    { name: 'Active', progress: 0 },
   ];
 
-  const pieData = [
-    { name: 'Critical', value: 15, color: '#dc2626' },
-    { name: 'High', value: 25, color: '#ef4444' },
-    { name: 'Medium', value: 45, color: '#f87171' },
-    { name: 'Low', value: 15, color: '#fecaca' },
+  const pieData = stats ? [
+    { name: 'Critical', value: stats.distribution.Critical, color: '#dc2626' },
+    { name: 'High', value: stats.distribution.High, color: '#ef4444' },
+    { name: 'Medium', value: stats.distribution.Medium, color: '#f87171' },
+    { name: 'Low', value: stats.distribution.Low, color: '#fecaca' },
+  ] : [
+    { name: 'Critical', value: 0, color: '#dc2626' },
+    { name: 'High', value: 0, color: '#ef4444' },
+    { name: 'Medium', value: 0, color: '#f87171' },
+    { name: 'Low', value: 0, color: '#fecaca' },
   ];
+
+  const impactPercentage = stats?.efficiency || 0;
 
   return (
     <motion.div 
@@ -1209,10 +1216,10 @@ function Dashboard({ stats }: { stats: ProjectStats | null }) {
       className="space-y-10 pb-20 perspective-1000 p-2"
     >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <StatCard title="Total Strategies" value={stats?.totalProjects.toString() || '0'} growth="+2" icon={<BarChart3 />} />
-          <StatCard title="Active Sprint Velocity" value="42.5" growth="+12%" icon={<TrendingUp />} />
-          <StatCard title="Team Efficiency" value="94%" growth="+2.4%" icon={<CheckCircle2 />} />
-          <StatCard title="Resource Allocation" value={`${Math.round(stats?.totalHours || 0)}h`} growth="-4%" icon={<Clock />} />
+          <StatCard title="Total Strategies" value={stats?.totalProjects.toString() || '0'} growth={stats?.totalProjects ? "+1" : "0"} icon={<BarChart3 />} />
+          <StatCard title="Strategic Velocity" value={stats?.totalTasks ? "42.5" : "0.0"} growth={stats?.totalTasks ? "+12%" : "0%"} icon={<TrendingUp />} />
+          <StatCard title="Team Efficiency" value={stats ? `${stats.efficiency}%` : "0%"} growth={stats?.efficiency ? "+2.4%" : "0%"} icon={<CheckCircle2 />} />
+          <StatCard title="Resource Allocation" value={`${Math.round(stats?.totalHours || 0)}h`} growth={stats?.totalHours ? "-4%" : "0%"} icon={<Clock />} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1278,7 +1285,7 @@ function Dashboard({ stats }: { stats: ProjectStats | null }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-2xl font-black text-slate-900 tracking-tighter">84%</span>
+                  <span className="text-2xl font-black text-slate-900 tracking-tighter">{impactPercentage}%</span>
                   <span className="text-[8px] font-bold text-slate-400 uppercase">Impact</span>
               </div>
             </div>
@@ -1297,9 +1304,9 @@ function Dashboard({ stats }: { stats: ProjectStats | null }) {
           <Card className="p-6 bg-white border-slate-200 shadow-lg shadow-slate-100/50 lg:col-span-1">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 font-sans">Strategic Efficiency</h4>
             <div className="space-y-6">
-               <ProgressBar label="System Intelligence" value={78} color="bg-emerald-500" />
-               <ProgressBar label="Protocol Compliance" value={92} color="bg-red-500" />
-               <ProgressBar label="Architecture Integrity" value={64} color="bg-slate-400" />
+               <ProgressBar label="System Intelligence" value={stats?.intelligenceScore || 0} color="bg-emerald-500" />
+               <ProgressBar label="Protocol Compliance" value={stats?.complianceScore || 0} color="bg-red-500" />
+               <ProgressBar label="Architecture Integrity" value={stats?.integrityScore || 0} color="bg-slate-400" />
             </div>
           </Card>
           

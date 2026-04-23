@@ -85,4 +85,15 @@ export interface ProjectStats {
   totalTasks: number;
   completedTasks: number;
   totalHours: number;
+  efficiency: number;
+  distribution: {
+      Critical: number;
+      High: number;
+      Medium: number;
+      Low: number;
+  };
+  performance: { name: string, progress: number }[];
+  intelligenceScore: number;
+  complianceScore: number;
+  integrityScore: number;
 }
