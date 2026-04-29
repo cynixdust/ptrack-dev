@@ -250,6 +250,12 @@ export default function App() {
     setActiveProject(data);
   };
 
+  const onStrategicUpdate = async () => {
+    await loadProjectDetails();
+    const summary = await api.getSummaryStats();
+    setStats(summary);
+  };
+
   const handleLogout = async () => {
       await api.logout();
       setUser(null);
@@ -498,7 +504,7 @@ export default function App() {
                     <TaskListView 
                         project={activeProject}
                         users={users}
-                        onUpdate={() => loadProjectDetails()}
+                        onUpdate={onStrategicUpdate}
                         onAddTask={() => {
                             const firstEpic = activeProject?.epics?.[0];
                             const firstStory = firstEpic?.stories?.[0];
@@ -724,7 +730,7 @@ export default function App() {
                     user={user} 
                     searchQuery={searchQuery}
                     canEdit={isMember}
-                    onUpdate={() => loadProjectDetails()} 
+                    onUpdate={onStrategicUpdate} 
                     onSelectTask={(task) => setSelectedTask(task)} 
                     onEditTask={(task) => {
                         setEditingTask(task);
@@ -1470,7 +1476,8 @@ function TaskListView({
         <div className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar bg-[#F8FAFC]">
             <div className="min-w-max">
                 {localTasks.map(task => {
-                    const completePct = Math.min(Math.round((task.actual_time / (task.estimated_time || 1)) * 100), 100);
+                    const basePct = Math.min(Math.round((task.actual_time / (task.estimated_time || 1)) * 100), 100);
+                    const completePct = task.status === 'Done' ? 100 : basePct;
                     return (
                         <div key={task.id} className="flex items-stretch border-b border-slate-100 hover:bg-slate-50 transition-colors group">
                             <div className="flex-[2.5] min-w-[250px] p-3 flex items-center border-r border-slate-100">
@@ -1885,16 +1892,16 @@ function KanbanBoard({
                                         {/* Progress Bar */}
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between items-center text-[10px] font-bold">
-                                                <span className="text-slate-400 uppercase tracking-wider">Velocity</span>
-                                                <span className="text-slate-600">{Math.round((task.actual_time / (task.estimated_time || 1)) * 100)}%</span>
+                                                <span className="text-slate-400 uppercase tracking-wider">Completion</span>
+                                                <span className="text-slate-600">{task.status === 'Done' ? 100 : Math.round((task.actual_time / (task.estimated_time || 1)) * 100)}%</span>
                                             </div>
                                             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
                                                 <motion.div 
                                                     initial={{ width: 0 }}
-                                                    animate={{ width: `${Math.min((task.actual_time / (task.estimated_time || 1)) * 100, 100)}%` }}
+                                                    animate={{ width: `${task.status === 'Done' ? 100 : Math.min((task.actual_time / (task.estimated_time || 1)) * 100, 100)}%` }}
                                                     className={cn(
                                                         "h-full rounded-full transition-colors",
-                                                        (task.actual_time / (task.estimated_time || 1)) > 1 ? "bg-amber-500" : "bg-red-500"
+                                                        task.status === 'Done' ? "bg-emerald-500" : (task.actual_time / (task.estimated_time || 1)) > 1 ? "bg-amber-500" : "bg-red-500"
                                                     )}
                                                 />
                                             </div>

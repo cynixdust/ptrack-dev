@@ -443,7 +443,11 @@ app.get("/api/reports/summary", authenticateToken, (req, res) => {
   const totalProjects = (db.prepare("SELECT COUNT(*) as count FROM projects").get() as any).count;
   const totalTasks = (db.prepare("SELECT COUNT(*) as count FROM tasks").get() as any).count;
   const completedTasks = (db.prepare("SELECT COUNT(*) as count FROM tasks WHERE status = 'Done'").get() as any).count;
-  const totalHours = (db.prepare("SELECT SUM(duration) as sum FROM time_logs").get() as any).sum || 0;
+  
+  // Combine time_logs and manual actual_time inputs for holistic resource allocation
+  const loggedHours = (db.prepare("SELECT SUM(duration) as sum FROM time_logs").get() as any).sum || 0;
+  const manualHours = (db.prepare("SELECT SUM(actual_time) as sum FROM tasks").get() as any).sum || 0;
+  const totalHours = loggedHours + manualHours;
   
   // Real-time distribution
   const priorityCounts = db.prepare("SELECT priority, COUNT(*) as count FROM tasks GROUP BY priority").all() as any[];
@@ -454,9 +458,21 @@ app.get("/api/reports/summary", authenticateToken, (req, res) => {
       Low: priorityCounts.find(p => p.priority === 'Low')?.count || 0
   };
 
-  const efficiency = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  // Weighted Efficiency: Accounts for partial progress on tasks not yet 'Done'
+  const taskProgress = db.prepare(`
+    SELECT 
+      SUM(CASE 
+        WHEN status = 'Done' THEN 100 
+        WHEN estimated_time > 0 THEN MIN(100, (actual_time / estimated_time) * 100)
+        ELSE 0 
+      END) as total_progress
+    FROM tasks
+  `).get() as any;
+
+  const weightedEfficiency = totalTasks > 0 ? Math.round(taskProgress.total_progress / totalTasks) : 0;
+  const efficiency = weightedEfficiency;
   
-  // Performance history (last 4 sprints or months - simplified to recent 4 data points)
+  // Performance history
   const performance = [
       { name: 'Sprint Alpha', progress: 0 },
       { name: 'Sprint Beta', progress: 0 },
@@ -472,8 +488,8 @@ app.get("/api/reports/summary", authenticateToken, (req, res) => {
     efficiency,
     distribution,
     performance,
-    intelligenceScore: totalTasks > 0 ? Math.round((completedTasks/totalTasks) * 100) : 0,
-    complianceScore: totalTasks > 0 ? Math.min(100, Math.round((totalTasks / (totalProjects * 5 || 1)) * 100)) : 0, 
+    intelligenceScore: efficiency,
+    complianceScore: totalTasks > 0 ? Math.min(100, Math.round((completedTasks / totalTasks) * 100)) : 0, 
     integrityScore: totalProjects > 0 ? 100 : 0
   };
   res.json(stats);
